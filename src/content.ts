@@ -4,7 +4,7 @@ import { defineSettings } from "./lib/settings";
 import { defineStatuses } from "./lib/status";
 
 export const content = {
-  title: "BAZE 템플릿",
+  title: "서정현 | 간호학과 1학년 포트폴리오",
   owner: {
     title: "가게 관리",
     members: ["정은재", "한도윤"],
