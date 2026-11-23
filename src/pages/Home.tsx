@@ -30,8 +30,20 @@ const growthGoals = [
   { stage: "소통", title: "경청하고 함께 배우는 사람 되기", text: "조별 활동에서 친구의 의견을 끝까지 듣고, 내 생각도 차분하게 전하려 해요." },
 ];
 
+const categories = [
+  { id: "about", label: "소개" },
+  { id: "experience", label: "배움과 활동" },
+  { id: "education", label: "교육 이수" },
+  { id: "projects", label: "프로젝트" },
+  { id: "growth", label: "성장 계획" },
+  { id: "contact", label: "연락" },
+];
+
 export default function Home() {
   const [filter, setFilter] = useState("전체");
+  const [activeCategory, setActiveCategory] = useState("about");
+  const navigationTarget = useRef<string | null>(null);
+  const header = useRef<HTMLElement>(null);
   const [selected, setSelected] = useState<(typeof experiences)[number] | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -41,13 +53,63 @@ export default function Home() {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = previous; };
   }, [selected]);
+  useEffect(() => {
+    let frame = 0;
+    const updateActiveCategory = () => {
+      frame = 0;
+      if (navigationTarget.current) {
+        setActiveCategory(navigationTarget.current);
+        return;
+      }
+      const readingLine = Math.max((header.current?.offsetHeight ?? 0) + 40, window.innerHeight * 0.3);
+      let current = categories[0].id;
+      for (const category of categories) {
+        const section = document.getElementById(category.id);
+        if (section && section.getBoundingClientRect().top <= readingLine) current = category.id;
+      }
+      if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) current = "contact";
+      setActiveCategory(current);
+    };
+    const scheduleUpdate = () => {
+      if (!frame) frame = requestAnimationFrame(updateActiveCategory);
+    };
+    const resumeReading = () => {
+      navigationTarget.current = null;
+      scheduleUpdate();
+    };
+    const resumeKeyboardReading = (event: KeyboardEvent) => {
+      if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(event.key)) resumeReading();
+    };
+    const readCategoryHash = () => {
+      navigationTarget.current = categories.find(category => `#${category.id}` === window.location.hash)?.id ?? null;
+      scheduleUpdate();
+    };
+    readCategoryHash();
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+    window.addEventListener("wheel", resumeReading, { passive: true });
+    window.addEventListener("pointerdown", resumeReading, { passive: true });
+    window.addEventListener("keydown", resumeKeyboardReading);
+    window.addEventListener("hashchange", readCategoryHash);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+      window.removeEventListener("wheel", resumeReading);
+      window.removeEventListener("pointerdown", resumeReading);
+      window.removeEventListener("keydown", resumeKeyboardReading);
+      window.removeEventListener("hashchange", readCategoryHash);
+    };
+  }, []);
   return (
     <div className="portfolio min-h-screen bg-[#fafbf8] text-[#263d35] [word-break:keep-all]">
       <a href="#home" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:p-3">본문으로 바로가기</a>
-      <header className="border-b border-[#dfe5dc] bg-[#fafbf8]">
-        <div className="mx-auto flex h-22 max-w-[1200px] items-center justify-between gap-4 px-6 lg:px-10">
-          <a href="#home" className="flex items-center gap-3 text-lg font-semibold tracking-tight"><span className="flex size-8 items-center justify-center rounded-full bg-[#e8eee3] text-[#59734e]">✳</span> 서정현<span className="hidden text-sm font-normal text-[#7a867a] sm:inline">간호 포트폴리오</span></a>
-          <nav aria-label="주요 메뉴" className="flex items-center gap-4 text-sm md:gap-7"><a href="#about" className="hover:text-[#6e865a]">소개</a><a href="#experience" className="hover:text-[#6e865a]">배움과 활동</a><a href="#education" className="hidden hover:text-[#6e865a] sm:block">교육 이수</a><a href="#growth" className="hidden hover:text-[#6e865a] sm:block">성장 계획</a><a href="#contact" className="rounded-full border border-[#c7d1bf] px-4 py-2">연락하기 <span aria-hidden="true">↗</span></a></nav>
+      <header ref={header} className="sticky top-0 z-30 border-b border-[#dfe5dc] bg-[#fafbf8]">
+        <div className="mx-auto flex max-w-[1200px] flex-col px-6 lg:min-h-22 lg:flex-row lg:items-center lg:justify-between lg:gap-4 lg:px-10">
+          <a href="#home" className="flex min-h-16 shrink-0 items-center gap-3 self-start text-lg font-semibold tracking-tight lg:self-auto"><span aria-hidden="true" className="flex size-8 items-center justify-center rounded-full bg-[#e8eee3] text-[#59734e]">✳</span> 서정현<span className="text-xs font-normal text-[#5e6d57] sm:text-sm">간호 포트폴리오</span></a>
+          <nav aria-label="포트폴리오 카테고리" className="grid grid-cols-3 gap-1 pb-3 lg:flex lg:pb-0">
+            {categories.map(category => <a key={category.id} href={`#${category.id}`} onClick={() => { navigationTarget.current = category.id; setActiveCategory(category.id); }} aria-current={activeCategory === category.id ? "location" : undefined} className={`flex min-h-11 items-center justify-center whitespace-nowrap rounded-full px-2 text-xs transition-colors lg:px-4 lg:text-sm ${activeCategory === category.id ? "bg-[#354e3f] font-medium text-white" : "text-[#5e6d57] hover:bg-[#edf1e7] hover:text-[#263d35]"}`}>{category.label}</a>)}
+          </nav>
         </div>
       </header>
       <main id="home" className="mx-auto max-w-[1200px] px-6 lg:px-10">
@@ -126,7 +188,7 @@ export default function Home() {
           <div><p className="text-xs text-[#738167]">지금부터 키워갈 나의 기본</p><h2 className="mt-3 text-2xl font-medium tracking-tight">나의 성장 계획</h2><p className="mt-4 text-sm leading-7 text-[#6c7a63]">빠른 성과보다 꾸준한 배움을.<br/>작은 목표부터 실천하려 해요.</p><p className="mt-5 inline-block rounded-full border border-[#cbd6c0] px-3 py-1 text-xs text-[#6c7a63]">앞으로의 목표 · 예시</p></div>
           <div className="space-y-5">{growthGoals.map(({stage,title,text})=><div key={stage} className="flex gap-5 border-b border-[#d6dfcd] pb-5 last:border-0 last:pb-0"><span className="shrink-0 pt-0.5 text-xs text-[#718461]">{stage}</span><div><h3 className="text-sm font-medium">{title}</h3><p className="mt-2 max-w-md text-xs leading-6 text-[#7b8673]">{text}</p></div></div>)}</div>
         </section>
-        <section id="contact" className="flex flex-wrap items-center justify-between gap-6 border-t border-[#dce3d7] py-12"><div><h2 className="text-2xl font-medium tracking-tight">더 나은 간호를 향한 연결</h2><p className="mt-3 text-sm text-[#77816f]">함께 배우고 성장할 기회를 기다려요.</p></div><div className="text-right"><p className="text-sm">이메일을 준비하고 있어요</p><p className="mt-2 text-xs text-[#7d8776]">실제 연락처로 변경할 수 있어요</p></div></section>
+        <section id="contact" className="flex flex-wrap items-center justify-between gap-6 border-t border-[#dce3d7] py-12"><div><h2 className="text-2xl font-medium tracking-tight">더 나은 간호를 향한 연결</h2><p className="mt-3 text-sm text-[#77816f]">함께 배우고 성장할 기회를 기다려요.</p></div><div className="text-right"><p className="text-sm">이메일을 준비하고 있어요</p><p className="mt-2 text-xs text-[#7d8776]">실제 연락처로 변경할 수 있어요</p><a href="#home" className="mt-4 inline-flex min-h-11 items-center gap-3 text-sm text-[#354e3f] hover:underline">처음으로 <span aria-hidden="true">↑</span></a></div></section>
       </main>
       <footer className="border-t border-[#e2e7dd] py-6"><div className="mx-auto flex max-w-[1200px] flex-wrap justify-between gap-2 px-6 text-[11px] text-[#8a9282] lg:px-10"><p>서정현의 1학년 간호 포트폴리오 · 학습 활동과 목표는 예시</p><p>서툰 시작도, 소중한 배움의 기록이에요.</p></div></footer>
       {selected && <dialog ref={dialog} onClose={()=>setSelected(null)} aria-labelledby="record-title" className="portfolio fixed inset-0 m-auto max-h-[85dvh] w-[calc(100%-2.5rem)] max-w-lg overflow-y-auto overscroll-contain rounded-2xl bg-[#fafbf8] p-8 text-[#263d35] backdrop:bg-[#182b23]/40">
